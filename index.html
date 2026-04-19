@@ -73,132 +73,135 @@
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    // --- CONFIGURAZIONE ---
-    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuyT4fM1SjsDwY2zWbNo8cNxnj8roA_snL_C83Bslyo8YM62KPFs7X2SHmxPad959yfbJG1L1HJofb/pub?gid=1652944660&single=true&output=csv';
-    const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdFcTVX--HL6YjNLMk2g_LMZpA_CjQ9-hxcDrCJTbNu5953Zg/formResponse';
-    
-    const ENTRY_LAT = 'entry.1814676774'; 
-    const ENTRY_LNG = 'entry.1088868105';
-    const ENTRY_NOTE = 'entry.860881001';
-    const ENTRY_IMG = 'entry.1499570985';
+    <script>
+        // --- CONFIGURAZIONE ---
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuyT4fM1SjsDwY2zWbNo8cNxnj8roA_snL_C83Bslyo8YM62KPFs7X2SHmxPad959yfbJG1L1HJofb/pub?gid=1652944660&single=true&output=csv';
+        const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdFcTVX--HL6YjNLMk2g_LMZpA_CjQ9-hxcDrCJTbNu5953Zg/formResponse';
+        
+        const ENTRY_LAT = 'entry.1814676774'; 
+        const ENTRY_LNG = 'entry.1088868105';
+        const ENTRY_NOTE = 'entry.860881001';
+        const ENTRY_IMG = 'entry.1499570985';
 
-    const panel = document.getElementById('ui-panel');
-    const statusText = document.getElementById('coord-status');
-    const searchInput = document.getElementById('search-input');
-    let tempMarker = null;
-    let activeCoords = null;
+        const panel = document.getElementById('ui-panel');
+        const statusText = document.getElementById('coord-status');
+        const searchInput = document.getElementById('search-input');
+        let tempMarker = null;
+        let activeCoords = null;
 
-    const map = L.map('map', { center: [41.11, 16.87], zoom: 8, tap: false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        const map = L.map('map', { center: [41.11, 16.87], zoom: 8, tap: false });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-    function openUI() { panel.classList.remove('collapsed'); }
-    function closeUI() { panel.classList.add('collapsed'); }
+        function openUI() { panel.classList.remove('collapsed'); }
+        function closeUI() { panel.classList.add('collapsed'); }
 
-    // --- FUNZIONE CARICAMENTO MIGLIORATA ---
-    async function loadPoints() {
-        try {
-            const resp = await fetch(CSV_URL + '&cachebuster=' + new Date().getTime());
-            const csvData = await resp.text();
-            
-            // Divide le righe gestendo sia Windows (\r\n) che Linux (\n)
-            const lines = csvData.split(/\r?\n/).slice(1); 
+        // --- FUNZIONE CARICAMENTO ---
+        async function loadPoints() {
+            try {
+                const resp = await fetch(CSV_URL + '&cachebuster=' + new Date().getTime());
+                const csvData = await resp.text();
+                const lines = csvData.split(/\r?\n/).slice(1); 
 
-            // Rimuove i vecchi marker (tranne quello temporaneo che stai piazzando)
-            map.eachLayer(layer => {
-                if (layer instanceof L.Marker && layer !== tempMarker) map.removeLayer(layer);
-            });
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Marker && layer !== tempMarker) map.removeLayer(layer);
+                });
 
-            lines.forEach(line => {
-                if (!line.trim()) return; // Salta righe vuote
+                lines.forEach(line => {
+                    if (!line.trim()) return;
+                    const cols = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
+                    const cleanCols = cols.map(c => c.trim().replace(/^"|"$/g, ''));
 
-                // Regex avanzata per dividere le colonne anche se contengono virgole dentro le virgolette
-                const cols = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
-                const cleanCols = cols.map(c => c.trim().replace(/^"|"$/g, ''));
+                    if (cleanCols.length < 3) return;
 
-                if (cleanCols.length < 3) return;
+                    // CORREZIONE DEFINITIVA COORDINATE:
+                    // Rimuoviamo i punti (migliaia) e cambiamo la virgola in punto
+                    let rawLat = cleanCols[1].replace(/\./g, '').replace(',', '.');
+                    let rawLng = cleanCols[2].replace(/\./g, '').replace(',', '.');
 
-                // Proviamo a pescare lat/lng convertendo la virgola italiana in punto se necessario
-                const lat = parseFloat(cleanCols[1].replace(',', '.'));
-                const lng = parseFloat(cleanCols[2].replace(',', '.'));
-                const note = cleanCols[3] || "Punto";
-                const img = cleanCols[4] || "";
+                    // Se dopo la pulizia il numero è esagerato (es. 4112345 invece di 41.123), lo aggiustiamo
+                    let lat = parseFloat(rawLat);
+                    let lng = parseFloat(rawLng);
 
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    L.marker([lat, lng]).addTo(map)
-                     .bindPopup(`<div class="custom-popup"><b>${note}</b>${img ? `<br><img src="${img}" style="width:100%; border-radius:8px; margin-top:8px;" onerror="this.style.display='none'">` : ''}</div>`);
-                }
-            });
-            console.log("Mappa aggiornata con successo");
-        } catch (err) { 
-            console.error("Errore caricamento punti:", err); 
+                    if (lat > 90 || lat < -90) lat = lat / Math.pow(10, rawLat.length - 2);
+                    if (lng > 180 || lng < -180) lng = lng / Math.pow(10, rawLng.length - 2);
+
+                    const note = cleanCols[3] || "Punto";
+                    const img = cleanCols[4] || "";
+
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        L.marker([lat, lng]).addTo(map)
+                         .bindPopup(`<div class="custom-popup"><b>${note}</b>${img ? `<br><img src="${img}" style="width:100%; border-radius:8px; margin-top:8px;" onerror="this.style.display='none'">` : ''}</div>`);
+                    }
+                });
+            } catch (err) { console.error("Errore CSV:", err); }
         }
-    }
 
-    // --- RESTO DELLE FUNZIONI (SALVATAGGIO, ECC) ---
-    function saveCurrentTree() {
-        if (!activeCoords) return alert("Scegli una posizione sulla mappa!");
-        const btn = document.querySelector('.save-btn');
-        btn.innerText = "INVIO...";
-        btn.disabled = true;
+        // --- FUNZIONE SALVATAGGIO ---
+        function saveCurrentTree() {
+            if (!activeCoords) return alert("Scegli una posizione sulla mappa!");
+            
+            const btn = document.querySelector('.save-btn');
+            btn.innerText = "INVIO...";
+            btn.disabled = true;
 
-        const formData = new FormData();
-        formData.append(ENTRY_LAT, activeCoords.lat);
-        formData.append(ENTRY_LNG, activeCoords.lng);
-        formData.append(ENTRY_NOTE, document.getElementById('treeNote').value);
-        formData.append(ENTRY_IMG, document.getElementById('treeImg').value);
+            const formData = new FormData();
+            // Inviamo le coordinate come stringhe semplici per evitare errori di formattazione browser
+            formData.append(ENTRY_LAT, activeCoords.lat.toString());
+            formData.append(ENTRY_LNG, activeCoords.lng.toString());
+            formData.append(ENTRY_NOTE, document.getElementById('treeNote').value);
+            formData.append(ENTRY_IMG, document.getElementById('treeImg').value);
 
-        fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData })
-        .then(() => {
-            alert("Salvato! Apparirà tra circa un minuto.");
-            resetForm();
-            setTimeout(loadPoints, 3000); 
-        })
-        .catch(() => alert("Errore invio"))
-        .finally(() => {
-            btn.innerText = "SALVA IN MAPPA";
-            btn.disabled = false;
-        });
-    }
+            fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData })
+            .then(() => {
+                alert("Salvato con successo! Apparirà tra circa 60 secondi.");
+                resetForm();
+                setTimeout(loadPoints, 4000); 
+            })
+            .catch(() => alert("Errore durante l'invio."))
+            .finally(() => {
+                btn.innerText = "SALVA IN MAPPA";
+                btn.disabled = false;
+            });
+        }
 
-    function resetForm() {
-        if (tempMarker) map.removeLayer(tempMarker);
-        tempMarker = null; activeCoords = null;
-        document.getElementById('treeNote').value = '';
-        document.getElementById('treeImg').value = '';
-        statusText.innerText = "⚠️ Tieni premuto sulla mappa per aggiungere un punto";
-        statusText.style.background = "#fff5f5";
-        closeUI();
-    }
+        function resetForm() {
+            if (tempMarker) map.removeLayer(tempMarker);
+            tempMarker = null; activeCoords = null;
+            document.getElementById('treeNote').value = '';
+            document.getElementById('treeImg').value = '';
+            statusText.innerText = "⚠️ Tieni premuto sulla mappa per aggiungere un punto";
+            statusText.style.background = "#fff5f5";
+            statusText.style.color = "#d9534f";
+            closeUI();
+        }
 
-    function onMapHold(e) {
-        activeCoords = e.latlng;
-        if (tempMarker) map.removeLayer(tempMarker);
-        tempMarker = L.marker(activeCoords, { opacity: 0.8 }).addTo(map);
-        statusText.innerText = "✅ Posizione selezionata!";
-        statusText.style.background = "#f0fff4";
-        statusText.style.color = "#28a745";
-        openUI();
-    }
+        function onMapHold(e) {
+            activeCoords = e.latlng;
+            if (tempMarker) map.removeLayer(tempMarker);
+            tempMarker = L.marker(activeCoords, { opacity: 0.8 }).addTo(map);
+            statusText.innerText = "✅ Posizione selezionata!";
+            statusText.style.background = "#f0fff4";
+            statusText.style.color = "#28a745";
+            openUI();
+        }
 
-    map.on('contextmenu', onMapHold);
-    let pressTimer;
-    map.on('mousedown touchstart', (e) => pressTimer = window.setTimeout(() => onMapHold(e), 800));
-    map.on('mouseup mouseleave touchend touchmove', () => clearTimeout(pressTimer));
+        map.on('contextmenu', onMapHold);
+        let pressTimer;
+        map.on('mousedown touchstart', (e) => pressTimer = window.setTimeout(() => onMapHold(e), 800));
+        map.on('mouseup mouseleave touchend touchmove', () => clearTimeout(pressTimer));
 
-    async function cercaPosto() {
-        const q = searchInput.value;
-        if (!q) return;
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
-        const d = await r.json();
-        if (d.length > 0) { map.setView([d[0].lat, d[0].lon], 14); closeUI(); }
-    }
-    document.getElementById('btn-vai').onclick = cercaPosto;
-    function locateMe() { map.locate({setView: true, maxZoom: 16}); closeUI(); }
+        async function cercaPosto() {
+            const q = searchInput.value;
+            if (!q) return;
+            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
+            const d = await r.json();
+            if (d.length > 0) { map.setView([d[0].lat, d[0].lon], 14); closeUI(); }
+        }
+        document.getElementById('btn-vai').onclick = cercaPosto;
+        function locateMe() { map.locate({setView: true, maxZoom: 16}); closeUI(); }
 
-    loadPoints();
-    setInterval(loadPoints, 60000);
-</script>
-    
+        loadPoints();
+        setInterval(loadPoints, 60000);
+    </script>
 </body>
 </html>
