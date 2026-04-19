@@ -95,7 +95,7 @@
         function openUI() { panel.classList.remove('collapsed'); }
         function closeUI() { panel.classList.add('collapsed'); }
 
-        // --- FUNZIONE CARICAMENTO ---
+        // --- FUNZIONE CARICAMENTO CON PULIZIA DATI ---
         async function loadPoints() {
             try {
                 const resp = await fetch(CSV_URL + '&cachebuster=' + new Date().getTime());
@@ -113,18 +113,20 @@
 
                     if (cleanCols.length < 3) return;
 
-                    // CORREZIONE DEFINITIVA COORDINATE:
-                    // Rimuoviamo i punti (migliaia) e cambiamo la virgola in punto
-                    let rawLat = cleanCols[1].replace(/\./g, '').replace(',', '.');
-                    let rawLng = cleanCols[2].replace(/\./g, '').replace(',', '.');
+                    // Pulizia: rimuoviamo l'apostrofo protettivo e i punti delle migliaia errati
+                    let latStr = cleanCols[1].replace(/'/g, '').replace(/\./g, '').replace(',', '.');
+                    let lngStr = cleanCols[2].replace(/'/g, '').replace(/\./g, '').replace(',', '.');
 
-                    // Se dopo la pulizia il numero è esagerato (es. 4112345 invece di 41.123), lo aggiustiamo
-                    let lat = parseFloat(rawLat);
-                    let lng = parseFloat(rawLng);
+                    // Se il numero è diventato un intero gigante (es. 4102601), riposizioniamo il decimale
+                    if (latStr.length > 5 && !latStr.includes('.')) {
+                        latStr = latStr.substring(0, 2) + '.' + latStr.substring(2);
+                    }
+                    if (lngStr.length > 5 && !lngStr.includes('.')) {
+                        lngStr = lngStr.substring(0, 2) + '.' + lngStr.substring(2);
+                    }
 
-                    if (lat > 90 || lat < -90) lat = lat / Math.pow(10, rawLat.length - 2);
-                    if (lng > 180 || lng < -180) lng = lng / Math.pow(10, rawLng.length - 2);
-
+                    const lat = parseFloat(latStr);
+                    const lng = parseFloat(lngStr);
                     const note = cleanCols[3] || "Punto";
                     const img = cleanCols[4] || "";
 
@@ -133,10 +135,10 @@
                          .bindPopup(`<div class="custom-popup"><b>${note}</b>${img ? `<br><img src="${img}" style="width:100%; border-radius:8px; margin-top:8px;" onerror="this.style.display='none'">` : ''}</div>`);
                     }
                 });
-            } catch (err) { console.error("Errore CSV:", err); }
+            } catch (err) { console.error("Errore caricamento:", err); }
         }
 
-        // --- FUNZIONE SALVATAGGIO ---
+        // --- FUNZIONE SALVATAGGIO CON PROTEZIONE APOSTROFO ---
         function saveCurrentTree() {
             if (!activeCoords) return alert("Scegli una posizione sulla mappa!");
             
@@ -145,19 +147,19 @@
             btn.disabled = true;
 
             const formData = new FormData();
-            // Inviamo le coordinate come stringhe semplici per evitare errori di formattazione browser
-            formData.append(ENTRY_LAT, activeCoords.lat.toString());
-            formData.append(ENTRY_LNG, activeCoords.lng.toString());
+            // Aggiungiamo un apostrofo per forzare Google Sheets a salvare come TESTO
+            formData.append(ENTRY_LAT, "'" + activeCoords.lat.toString());
+            formData.append(ENTRY_LNG, "'" + activeCoords.lng.toString());
             formData.append(ENTRY_NOTE, document.getElementById('treeNote').value);
             formData.append(ENTRY_IMG, document.getElementById('treeImg').value);
 
             fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData })
             .then(() => {
-                alert("Salvato con successo! Apparirà tra circa 60 secondi.");
+                alert("Salvato! Grazie alla protezione dati, ora apparirà correttamente.");
                 resetForm();
                 setTimeout(loadPoints, 4000); 
             })
-            .catch(() => alert("Errore durante l'invio."))
+            .catch(() => alert("Errore invio. Controlla la connessione."))
             .finally(() => {
                 btn.innerText = "SALVA IN MAPPA";
                 btn.disabled = false;
