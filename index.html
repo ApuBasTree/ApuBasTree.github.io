@@ -75,15 +75,15 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // --- CONFIGURAZIONE DEFINITIVA ---
+        // --- CONFIGURAZIONE AGGIORNATA ---
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuyT4fM1SjsDwY2zWbNo8cNxnj8roA_snL_C83Bslyo8YM62KPFs7X2SHmxPad959yfbJG1L1HJofb/pub?gid=1652944660&single=true&output=csv';
         const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdFcTVX--HL6YjNLMk2g_LMZpA_CjQ9-hxcDrCJTbNu5953Zg/formResponse';
         
-        // ID estratti dal tuo modulo lungo
-        const ENTRY_LAT = 'entry.316886866'; 
-        const ENTRY_LNG = 'entry.1706689033';
-        const ENTRY_NOTE = 'entry.1288849491';
-        const ENTRY_IMG = 'entry.1802996944';
+        // Nuovi ID Entry scoperti tramite console
+        const ENTRY_LAT = 'entry.1814676774'; 
+        const ENTRY_LNG = 'entry.1088868105';
+        const ENTRY_NOTE = 'entry.860881001';
+        const ENTRY_IMG = 'entry.1499570985';
 
         const panel = document.getElementById('ui-panel');
         const statusText = document.getElementById('coord-status');
@@ -108,8 +108,11 @@
                 });
 
                 lines.forEach(line => {
+                    // Gestione robusta del CSV: pulizia virgolette e spazi
                     const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
                     if (cols.length < 3) return;
+
+                    // Associazione colonne: 0=Timestamp, 1=Lat, 2=Lng, 3=Note, 4=Img
                     const lat = parseFloat(cols[1]);
                     const lng = parseFloat(cols[2]);
                     const note = cols[3] || "Punto";
@@ -120,7 +123,7 @@
                          .bindPopup(`<div class="custom-popup"><b>${note}</b>${img ? `<img src="${img}" onerror="this.style.display='none'">` : ''}</div>`);
                     }
                 });
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error("Errore caricamento CSV:", err); }
         }
 
         function saveCurrentTree() {
@@ -131,6 +134,7 @@
             btn.disabled = true;
 
             const formData = new FormData();
+            // Invio i dati associandoli agli ID entry corretti
             formData.append(ENTRY_LAT, activeCoords.lat);
             formData.append(ENTRY_LNG, activeCoords.lng);
             formData.append(ENTRY_NOTE, document.getElementById('treeNote').value);
@@ -138,11 +142,11 @@
 
             fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData })
             .then(() => {
-                alert("Salvato! Apparirà tra circa un minuto.");
+                alert("Salvato! I dati sono stati inviati. Attendi circa 60 secondi per l'aggiornamento della mappa.");
                 resetForm();
-                setTimeout(loadPoints, 5000);
+                setTimeout(loadPoints, 5000); // Riprova il caricamento dopo 5 secondi
             })
-            .catch(() => alert("Errore invio"))
+            .catch(() => alert("Errore durante l'invio. Verifica la connessione."))
             .finally(() => {
                 btn.innerText = "SALVA IN MAPPA";
                 btn.disabled = false;
@@ -156,6 +160,7 @@
             document.getElementById('treeImg').value = '';
             statusText.innerText = "⚠️ Tieni premuto sulla mappa per aggiungere un punto";
             statusText.style.background = "#fff5f5";
+            statusText.style.color = "#d9534f";
             closeUI();
         }
 
@@ -185,7 +190,7 @@
         function locateMe() { map.locate({setView: true, maxZoom: 16}); closeUI(); }
 
         loadPoints();
-        setInterval(loadPoints, 60000);
+        setInterval(loadPoints, 60000); // Auto-aggiornamento ogni minuto
     </script>
 </body>
 </html>
