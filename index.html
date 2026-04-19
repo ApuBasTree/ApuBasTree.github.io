@@ -8,22 +8,17 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        /* Stili Base */
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #222; overflow: hidden; touch-action: none; }
         #map { height: 100vh; width: 100vw; background: #aad3df; }
         
-        /* Pulsante Menu */
         .menu-fab {
             position: absolute; top: 15px; left: 15px; z-index: 2200;
             background: #28a745; color: white; border: none;
             width: 55px; height: 55px; border-radius: 50%;
             font-size: 24px; display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4); cursor: pointer;
-            transition: transform 0.2s;
         }
-        .menu-fab:active { transform: scale(0.9); }
 
-        /* Pannello Laterale */
         .admin-panel {
             position: absolute; top: 0; left: 0; height: 100vh; z-index: 2300;
             background: white; padding: 25px; width: 320px; max-width: 85vw;
@@ -36,7 +31,6 @@
         .header-menu { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
         .close-btn { background: #f1f1f1; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
-        /* Form */
         .search-container { display: flex; gap: 8px; margin-bottom: 5px; }
         #search-input, #treeNote, #treeImg, .geo-btn, .save-btn { 
             width: 100%; padding: 14px; margin-top: 10px; border: 1px solid #ddd; 
@@ -45,13 +39,12 @@
         #search-input { margin-top: 0; border: 2px solid #28a745; }
         .search-btn { width: 70px; background: #28a745; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
         .geo-btn { background: #f8f9fa; color: #333; font-weight: bold; cursor: pointer; border: 1px solid #ddd; }
-        .save-btn { background: #28a745; color: white; font-weight: bold; border: none; margin-top: 20px; cursor: pointer; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
+        .save-btn { background: #28a745; color: white; font-weight: bold; border: none; margin-top: 20px; cursor: pointer; }
 
-        #coord-status { font-size: 13px; margin-top: 15px; text-align: center; padding: 10px; border-radius: 8px; background: #fff5f5; color: #d9534f; transition: all 0.3s; }
+        #coord-status { font-size: 13px; margin-top: 15px; text-align: center; padding: 10px; border-radius: 8px; background: #fff5f5; color: #d9534f; }
 
-        /* Popup */
         .custom-popup { text-align: center; width: 200px; padding: 5px; }
-        .custom-popup img { max-width: 100%; border-radius: 10px; margin-top: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .custom-popup img { max-width: 100%; border-radius: 10px; margin-top: 10px; }
         
         .leaflet-control-zoom { display: none; }
     </style>
@@ -62,24 +55,18 @@
 
     <div class="admin-panel collapsed" id="ui-panel">
         <div class="header-menu">
-            <b style="font-size: 1.2em;">Puglia Green Map</b>
+            <b>Puglia Green Map</b>
             <button class="close-btn" onclick="closeUI()">✕</button>
         </div>
-        
         <div class="search-container">
             <input type="text" id="search-input" placeholder="Cerca città o via...">
             <button class="search-btn" id="btn-vai">VAI</button>
         </div>
-        
         <button class="geo-btn" onclick="locateMe()">📍 USA MIA POSIZIONE</button>
-        
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-        
         <div id="coord-status">⚠️ Tieni premuto sulla mappa per aggiungere un punto</div>
-        
         <input type="text" id="treeNote" placeholder="Nome o nota (es. Ulivo)">
         <input type="text" id="treeImg" placeholder="Link immagine (URL)">
-        
         <button class="save-btn" onclick="saveCurrentTree()">SALVA IN MAPPA</button>
     </div>
 
@@ -88,39 +75,34 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // --- CONFIGURAZIONE ---
+        // --- CONFIGURAZIONE DEFINITIVA ---
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuyT4fM1SjsDwY2zWbNo8cNxnj8roA_snL_C83Bslyo8YM62KPFs7X2SHmxPad959yfbJG1L1HJofb/pub?gid=1652944660&single=true&output=csv';
-        const FORM_URL = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSclBvY_Lh8tZfB_3pU8x8x_8x_8x_8x_8x_8x_8x/formResponse'; // Assicurati che questo URL sia corretto (/formResponse finale)
+        const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdFcTVX--HL6YjNLMk2g_LMZpA_CjQ9-hxcDrCJTbNu5953Zg/formResponse';
         
-        // Sostituisci questi con i tuoi entry ID reali dal form
-        const ENTRY_LAT = 'entry.1508216140'; 
-        const ENTRY_LNG = 'entry.1119565555';
-        const ENTRY_NOTE = 'entry.1354009715';
-        const ENTRY_IMG = 'entry.1042730103';
+        // ID estratti dal tuo modulo lungo
+        const ENTRY_LAT = 'entry.316886866'; 
+        const ENTRY_LNG = 'entry.1706689033';
+        const ENTRY_NOTE = 'entry.1288849491';
+        const ENTRY_IMG = 'entry.1802996944';
 
         const panel = document.getElementById('ui-panel');
         const statusText = document.getElementById('coord-status');
         const searchInput = document.getElementById('search-input');
-        
         let tempMarker = null;
         let activeCoords = null;
 
-        // Inizializzazione Mappa
         const map = L.map('map', { center: [41.11, 16.87], zoom: 8, tap: false });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
         function openUI() { panel.classList.remove('collapsed'); }
         function closeUI() { panel.classList.add('collapsed'); }
 
-        // --- CARICAMENTO PUNTI ---
         async function loadPoints() {
             try {
-                // Aggiungiamo un timestamp per forzare l'aggiornamento dei dati (no cache)
                 const resp = await fetch(CSV_URL + '&t=' + new Date().getTime());
                 const csvData = await resp.text();
-                const lines = csvData.split('\n').slice(1); // Rimuove intestazione
+                const lines = csvData.split('\n').slice(1);
 
-                // Rimuove marker esistenti (tranne quello temporaneo)
                 map.eachLayer(layer => {
                     if (layer instanceof L.Marker && layer !== tempMarker) map.removeLayer(layer);
                 });
@@ -128,59 +110,40 @@
                 lines.forEach(line => {
                     const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
                     if (cols.length < 3) return;
-
-                    // Struttura CSV Google: [0]Timestamp, [1]Lat, [2]Lng, [3]Nota, [4]Img
                     const lat = parseFloat(cols[1]);
                     const lng = parseFloat(cols[2]);
-                    const note = cols[3] || "Albero";
+                    const note = cols[3] || "Punto";
                     const img = cols[4] || "";
 
                     if (!isNaN(lat) && !isNaN(lng)) {
                         L.marker([lat, lng]).addTo(map)
-                         .bindPopup(`
-                            <div class="custom-popup">
-                                <strong>${note}</strong><br>
-                                ${img ? `<img src="${img}" onerror="this.style.display='none'">` : ''}
-                            </div>
-                         `);
+                         .bindPopup(`<div class="custom-popup"><b>${note}</b>${img ? `<img src="${img}" onerror="this.style.display='none'">` : ''}</div>`);
                     }
                 });
-            } catch (err) { console.error("Errore caricamento:", err); }
+            } catch (err) { console.error(err); }
         }
 
-        // --- SALVATAGGIO ---
         function saveCurrentTree() {
-            if (!activeCoords) {
-                alert("Tieni premuto sulla mappa per scegliere la posizione!");
-                return;
-            }
-
-            const note = document.getElementById('treeNote').value;
-            const img = document.getElementById('treeImg').value;
+            if (!activeCoords) return alert("Scegli una posizione sulla mappa!");
+            
             const btn = document.querySelector('.save-btn');
-
-            btn.innerText = "INVIO IN CORSO...";
+            btn.innerText = "INVIO...";
             btn.disabled = true;
 
             const formData = new FormData();
             formData.append(ENTRY_LAT, activeCoords.lat);
             formData.append(ENTRY_LNG, activeCoords.lng);
-            formData.append(ENTRY_NOTE, note);
-            formData.append(ENTRY_IMG, img);
+            formData.append(ENTRY_NOTE, document.getElementById('treeNote').value);
+            formData.append(ENTRY_IMG, document.getElementById('treeImg').value);
 
-            // Invio al Google Form
-            fetch(FORM_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: formData
-            }).then(() => {
-                alert("Inviato con successo! Il punto apparirà tra un minuto.");
+            fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData })
+            .then(() => {
+                alert("Salvato! Apparirà tra circa un minuto.");
                 resetForm();
-                setTimeout(loadPoints, 3000);
-            }).catch(err => {
-                alert("Errore nell'invio.");
-                console.error(err);
-            }).finally(() => {
+                setTimeout(loadPoints, 5000);
+            })
+            .catch(() => alert("Errore invio"))
+            .finally(() => {
                 btn.innerText = "SALVA IN MAPPA";
                 btn.disabled = false;
             });
@@ -188,17 +151,14 @@
 
         function resetForm() {
             if (tempMarker) map.removeLayer(tempMarker);
-            tempMarker = null;
-            activeCoords = null;
+            tempMarker = null; activeCoords = null;
             document.getElementById('treeNote').value = '';
             document.getElementById('treeImg').value = '';
             statusText.innerText = "⚠️ Tieni premuto sulla mappa per aggiungere un punto";
             statusText.style.background = "#fff5f5";
-            statusText.style.color = "#d9534f";
             closeUI();
         }
 
-        // --- GESTIONE TOUCH/MOUSE ---
         function onMapHold(e) {
             activeCoords = e.latlng;
             if (tempMarker) map.removeLayer(tempMarker);
@@ -209,31 +169,23 @@
             openUI();
         }
 
-        map.on('contextmenu', onMapHold); // Tasto destro PC
-        
+        map.on('contextmenu', onMapHold);
         let pressTimer;
-        map.on('mousedown touchstart', (e) => {
-            pressTimer = window.setTimeout(() => onMapHold(e), 800);
-        });
+        map.on('mousedown touchstart', (e) => pressTimer = window.setTimeout(() => onMapHold(e), 800));
         map.on('mouseup mouseleave touchend touchmove', () => clearTimeout(pressTimer));
 
-        // --- RICERCA E GPS ---
         async function cercaPosto() {
-            const query = searchInput.value;
-            if (!query) return;
-            try {
-                const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-                const d = await r.json();
-                if (d.length > 0) { map.setView([d[0].lat, d[0].lon], 14); closeUI(); }
-                else { alert("Luogo non trovato"); }
-            } catch (e) { alert("Errore di rete"); }
+            const q = searchInput.value;
+            if (!q) return;
+            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
+            const d = await r.json();
+            if (d.length > 0) { map.setView([d[0].lat, d[0].lon], 14); closeUI(); }
         }
-        document.getElementById('btn-vai').addEventListener('click', cercaPosto);
+        document.getElementById('btn-vai').onclick = cercaPosto;
         function locateMe() { map.locate({setView: true, maxZoom: 16}); closeUI(); }
 
-        // Avvio
         loadPoints();
-        setInterval(loadPoints, 60000); // Aggiorna ogni minuto
+        setInterval(loadPoints, 60000);
     </script>
 </body>
 </html>
