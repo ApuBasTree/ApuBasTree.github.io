@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puglia Green Map 🌲</title>
+    <title>ApuBasTree Map 🌲</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -55,26 +55,26 @@
 
     <div class="admin-panel collapsed" id="ui-panel">
         <div class="header-menu">
-            <b>Puglia Green Map</b>
+            <b>ApuBasTree Map</b>
             <button class="close-btn" onclick="closeUI()">✕</button>
         </div>
         <div class="search-container">
-            <input type="text" id="search-input" placeholder="Cerca città o via...">
-            <button class="search-btn" id="btn-vai">VAI</button>
+            <input type="text" id="search-input" placeholder="Search city or street...">
+            <button class="search-btn" id="btn-vai">GO</button>
         </div>
-        <button class="geo-btn" onclick="locateMe()">📍 USA MIA POSIZIONE</button>
+        <button class="geo-btn" onclick="locateMe()">📍 USE MY LOCATION</button>
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-        <div id="coord-status">⚠️ Tieni premuto sulla mappa per aggiungere un punto</div>
-        <input type="text" id="treeNote" placeholder="Nome o nota (es. Ulivo)">
-        <input type="text" id="treeImg" placeholder="Link immagine (URL)">
-        <button class="save-btn" onclick="saveCurrentTree()">SALVA IN MAPPA</button>
+        <div id="coord-status">⚠️ Long press on map to add a point</div>
+        <input type="text" id="treeNote" placeholder="Name or note (e.g. Olive Tree)">
+        <input type="text" id="treeImg" placeholder="Image link (URL)">
+        <button class="save-btn" onclick="saveCurrentTree()">SAVE TO MAP</button>
     </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // --- CONFIGURAZIONE ---
+        // --- CONFIGURATION ---
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuyT4fM1SjsDwY2zWbNo8cNxnj8roA_snL_C83Bslyo8YM62KPFs7X2SHmxPad959yfbJG1L1HJofb/pub?gid=1652944660&single=true&output=csv';
         const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdFcTVX--HL6YjNLMk2g_LMZpA_CjQ9-hxcDrCJTbNu5953Zg/formResponse';
         
@@ -95,7 +95,7 @@
         function openUI() { panel.classList.remove('collapsed'); }
         function closeUI() { panel.classList.add('collapsed'); }
 
-        // --- FUNZIONE CARICAMENTO CON PULIZIA DATI ---
+        // --- LOADING FUNCTION WITH DATA CLEANING ---
         async function loadPoints() {
             try {
                 const resp = await fetch(CSV_URL + '&cachebuster=' + new Date().getTime());
@@ -113,11 +113,10 @@
 
                     if (cleanCols.length < 3) return;
 
-                    // Pulizia: rimuoviamo l'apostrofo protettivo e i punti delle migliaia errati
+                    // Cleaning: remove protective apostrophe and fix large integers if necessary
                     let latStr = cleanCols[1].replace(/'/g, '').replace(/\./g, '').replace(',', '.');
                     let lngStr = cleanCols[2].replace(/'/g, '').replace(/\./g, '').replace(',', '.');
 
-                    // Se il numero è diventato un intero gigante (es. 4102601), riposizioniamo il decimale
                     if (latStr.length > 5 && !latStr.includes('.')) {
                         latStr = latStr.substring(0, 2) + '.' + latStr.substring(2);
                     }
@@ -127,7 +126,7 @@
 
                     const lat = parseFloat(latStr);
                     const lng = parseFloat(lngStr);
-                    const note = cleanCols[3] || "Punto";
+                    const note = cleanCols[3] || "Point";
                     const img = cleanCols[4] || "";
 
                     if (!isNaN(lat) && !isNaN(lng)) {
@@ -135,19 +134,19 @@
                          .bindPopup(`<div class="custom-popup"><b>${note}</b>${img ? `<br><img src="${img}" style="width:100%; border-radius:8px; margin-top:8px;" onerror="this.style.display='none'">` : ''}</div>`);
                     }
                 });
-            } catch (err) { console.error("Errore caricamento:", err); }
+            } catch (err) { console.error("Loading error:", err); }
         }
 
-        // --- FUNZIONE SALVATAGGIO CON PROTEZIONE APOSTROFO ---
+        // --- SAVE FUNCTION WITH APOSTROPHE PROTECTION ---
         function saveCurrentTree() {
-            if (!activeCoords) return alert("Scegli una posizione sulla mappa!");
+            if (!activeCoords) return alert("Please select a location on the map!");
             
             const btn = document.querySelector('.save-btn');
-            btn.innerText = "INVIO...";
+            btn.innerText = "SENDING...";
             btn.disabled = true;
 
             const formData = new FormData();
-            // Aggiungiamo un apostrofo per forzare Google Sheets a salvare come TESTO
+            // Prefix with apostrophe to force Google Sheets to save as STRING
             formData.append(ENTRY_LAT, "'" + activeCoords.lat.toString());
             formData.append(ENTRY_LNG, "'" + activeCoords.lng.toString());
             formData.append(ENTRY_NOTE, document.getElementById('treeNote').value);
@@ -155,13 +154,13 @@
 
             fetch(FORM_URL, { method: 'POST', mode: 'no-cors', body: formData })
             .then(() => {
-                alert("Salvato! Grazie alla protezione dati, ora apparirà correttamente.");
+                alert("Saved! It will appear on the map shortly.");
                 resetForm();
                 setTimeout(loadPoints, 4000); 
             })
-            .catch(() => alert("Errore invio. Controlla la connessione."))
+            .catch(() => alert("Submission error. Please check your connection."))
             .finally(() => {
-                btn.innerText = "SALVA IN MAPPA";
+                btn.innerText = "SAVE TO MAP";
                 btn.disabled = false;
             });
         }
@@ -171,7 +170,7 @@
             tempMarker = null; activeCoords = null;
             document.getElementById('treeNote').value = '';
             document.getElementById('treeImg').value = '';
-            statusText.innerText = "⚠️ Tieni premuto sulla mappa per aggiungere un punto";
+            statusText.innerText = "⚠️ Long press on map to add a point";
             statusText.style.background = "#fff5f5";
             statusText.style.color = "#d9534f";
             closeUI();
@@ -181,7 +180,7 @@
             activeCoords = e.latlng;
             if (tempMarker) map.removeLayer(tempMarker);
             tempMarker = L.marker(activeCoords, { opacity: 0.8 }).addTo(map);
-            statusText.innerText = "✅ Posizione selezionata!";
+            statusText.innerText = "✅ Position selected!";
             statusText.style.background = "#f0fff4";
             statusText.style.color = "#28a745";
             openUI();
@@ -192,14 +191,14 @@
         map.on('mousedown touchstart', (e) => pressTimer = window.setTimeout(() => onMapHold(e), 800));
         map.on('mouseup mouseleave touchend touchmove', () => clearTimeout(pressTimer));
 
-        async function cercaPosto() {
+        async function searchLocation() {
             const q = searchInput.value;
             if (!q) return;
             const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
             const d = await r.json();
             if (d.length > 0) { map.setView([d[0].lat, d[0].lon], 14); closeUI(); }
         }
-        document.getElementById('btn-vai').onclick = cercaPosto;
+        document.getElementById('btn-vai').onclick = searchLocation;
         function locateMe() { map.locate({setView: true, maxZoom: 16}); closeUI(); }
 
         loadPoints();
